@@ -16,6 +16,7 @@ Shader "Unlit/NewUnlitShader"
 			#pragma fragment frag
 			#pragma hull hull
 			#pragma domain MyDomainProgram
+			#pragma geometry MyGeometryProgram
 			// make fog work
 			#pragma multi_compile_fog
 
@@ -131,7 +132,54 @@ Shader "Unlit/NewUnlitShader"
 			{
 				fixed4 col = tex2D(_MainTex, i.uv);
 				UNITY_APPLY_FOG(i.fogCoord, col);
-				return col;
+
+				float3 barys;
+				barys.xy = i.uv9;
+				barys.z = 1 - barys.x - barys.y;
+				float3 deltas = fwidth(barys);
+
+
+
+				float3 smoothing = deltas * 0.5;
+				float3 thickness = deltas * 0.5;
+
+
+
+				barys = smoothstep(thickness, thickness + smoothing, barys);
+				float minBary = min(barys.x, min(barys.y, barys.z));
+
+				float3 v =  lerp(float3(1,0,0), col.xyz, minBary);
+
+				return fixed4(v.x,v.y,v.z,col.w);
+				//return fixed4(d1, col.w);
+			}
+
+				[maxvertexcount(3)]
+			void MyGeometryProgram(
+				triangle v2f i[3],
+				inout TriangleStream<v2f> stream
+			) {
+				//float3 p0 = i[0].worldPos.xyz;
+				//float3 p1 = i[1].worldPos.xyz;
+				//float3 p2 = i[2].worldPos.xyz;
+
+				//float3 triangleNormal = normalize(cross(p1 - p0, p2 - p0));
+				//i[0].normal = triangleNormal;
+				//i[1].normal = triangleNormal;
+				//i[2].normal = triangleNormal;
+
+				//InterpolatorsGeometry g0, g1, g2;
+				//g0.data = i[0];
+				//g1.data = i[1];
+				//g2.data = i[2];
+
+				i[0].uv9 = float2(1, 0);
+				i[1].uv9 = float2(0, 1);
+				i[2].uv9 = float2(0, 0);
+
+				stream.Append(i[0]);
+				stream.Append(i[1]);
+				stream.Append(i[2]);
 			}
 			ENDCG
 		}
